@@ -1,4 +1,5 @@
 import socket
+
 s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 server = socket.gethostname()
 port = 12345
@@ -19,12 +20,16 @@ while connected:
     if rule == 'QUIT':
         print(response)
         connected = False
-    elif rule == 'DATA_SEND' and response == 'ACCEPTED':
+    elif rule == 'DATA_SEND':
         data = input("INPUT DATA TO SEND: ")
         s.send(data.encode())
         new_response = s.recv(1024).decode()
         print(new_response)
-
+    elif rule == 'DELETE_BUCKET':
+        data = input("INPUT ID OF BUCKET: ")
+        s.send(data.encode())
+        new_response = s.recv(1024).decode()
+        print(new_response)
     else:
         print(response)
 
