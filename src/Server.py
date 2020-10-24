@@ -1,5 +1,5 @@
 # imporing required modules
-import crud
+import Crud
 import Lexer as lx
 import os
 import socket
@@ -11,43 +11,59 @@ def threaded(c, addr):
     connected = True
     while connected:
 
-        data = c.recv(1024).decode()
-        print('Addr: ', addr, ' RULE: ', data)
-        rule = lx.find_rule(data)
+        rule = c.recv(1024).decode()
+        print('Addr: ', addr, ' RULE: ', rule)
 
-        if data == 'QUIT':
+        status = lx.check_sintaxis(rule)
+
+        c.send(status.encode())
+
+        if status != '200 OK':
+            pass
+
+        if rule == 'QUIT':
             print("connection closed from addr: ", addr)
             c.send(rule.encode())
             connected = False
             c.close()
-        elif data == 'DATA_SEND':
-            c.send(rule.encode())
-            new_data = c.recv(1024).decode()
-            status = lx.find_rule('DATA_RECEIVED')
-            print('Addr: ', addr, ' DATA: ', new_data)
-            c.send(status.encode())
-        elif data == 'LIST_BKTS':
-            response = crud.list_buckets()
-            c.send(response.encode())
-        elif data == 'CREATE_BUCKET':
-            status = crud.create_bucket()
-            if status:
-                response = rule
-            c.send(response.encode())
-        elif data == 'DELETE_BUCKET':
-            c.send(rule.encode())
-            id_bucket = c.recv(1024).decode()
-            status = crud.delete_bucket(id_bucket)
-            if status:
-                response = rule
-                print('Addr: ', addr, ' DATA: ', status)
-            else:
-                response = 'Error, the folder doesn`t exists or may contains files.'
-                print('Addr: ', addr, ' DATA: Error couldn`t delete bucket ', id_bucket)
-
-            c.send(response.encode())
         else:
-            c.send(rule.encode())
+            new_response = Crud.do_operation(c, rule)
+            c.send(new_response.encode())
+
+def handle_upload(c, file_name, upload_to):
+    root_directory = "buckets"
+    parent_dir = os.getcwd()
+    file_path = os.path.join(parent_dir, root_directory, upload_to, file_name)
+    writer = open(file_path, 'wb')
+
+    loop = c.recv(64)
+
+    for i in range(int(loop.strip().decode())):
+        data = c.recv(1024)
+        writer.write(data)
+
+    writer.close()
+
+def handle_upload_to_client(c, bucket, file_name):
+    root_directory = "buckets"
+    parent_dir = os.getcwd()
+    file_path = os.path.join(parent_dir, root_directory, bucket, file_name)
+
+
+    reader = open(file_path, 'rb')
+    size = os.path.getsize(file_path)
+
+    loop = str(int(size/1024)+1)
+
+    loop = loop.encode()
+
+    loop += b' ' * (64 - len(loop))
+    c.send(loop)
+
+    for i in range(int(loop)):
+
+        data = reader.read(1024)
+        c.send(data)
 
 if __name__ == '__main__':
 
