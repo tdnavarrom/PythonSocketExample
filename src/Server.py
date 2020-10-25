@@ -3,6 +3,7 @@ import Crud
 import Lexer as lx
 import os
 import socket
+import time
 
 # import thread module
 from threading import Thread
@@ -29,6 +30,8 @@ def threaded(c, addr):
         else:
             new_response = Crud.do_operation(c, rule)
             c.send(new_response.encode())
+        
+        time.sleep(2)
 
 def handle_upload(c, file_name, upload_to):
     root_directory = "buckets"

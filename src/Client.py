@@ -1,7 +1,7 @@
 import socket
 from threading import Thread
 import os
-
+import time
 
 
 def handle_upload(file_path):
@@ -30,9 +30,11 @@ def handle_download(file_name):
 
     writer = open(file_path+'/'+file_name, 'wb')
     
-    loop = s.recv(64)
+    limit = s.recv(64)
 
-    for i in range(int(loop.strip().decode())):
+    loop = int(limit.decode().strip())
+
+    for i in range(loop):
         data = s.recv(1024)
         writer.write(data)
 
@@ -71,17 +73,22 @@ if __name__ == "__main__":
             print(file_path)
             new_thread = Thread(target=handle_upload, args=(file_path,))
             new_thread.start()
+            
             print(s.recv(1024).decode('utf-8'))
         elif 'DOWNLOAD_FL' in rule and response == '200 OK':
             file_path = rule.split(' ')[2]
             print(file_path)
             new_thread = Thread(target=handle_download, args=(file_path,))
             new_thread.start()
+
             message = s.recv(1024)
-            print(message.decode())
+            print(message.decode('utf-8'))
+            
         else:
             response = s.recv(1024).decode('utf-8')
             print(response)
+
+        time.sleep(2)
 
 
     print("Exiting Connection to server: ", server)
