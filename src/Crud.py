@@ -50,44 +50,26 @@ def delete_bucket(bucket):
     return 'Bucket Removed Successfully!\n'
 
 def do_operation(client, command):
-    if command == 'LIST_BKT':
+    if command == 'ls_bkt':
         return list_buckets()
-    elif command == 'CREATE_BKT':
+    elif command == 'create_bkt':
         create_bucket()
         return 'Bucket Created Successfully!\n'
-    elif 'DELETE_BKT' in command:
+    elif 'rm_bkt' in command:
         try:
             bucket_to_delete = command.split(' ')[1]
             return delete_bucket(bucket_to_delete)
         except:
             return 'Syntax Error, unexpected ' + command + ', expecting DELETE_BKT <bucket_name>\n'
-    elif 'OPEN_BKT' in command:
+    elif 'open_bkt' in command:
         try:
             bucket_to_open = command.split(' ')[1]
             return open_bucket(bucket_to_open)
         except:
             return 'Syntax Error, unexpected ' + command + ', expecting OPEN_BKT <bucket_name>\n'
-    elif 'UPLOAD_FL' in command:
-        try:
-            arguments = command.split(' ', 2)
-            upload_to = arguments[1]
-            file_name = arguments[2].split('/')[-1]
-            new_thread = Thread(target=s.handle_upload, args=(client, file_name, upload_to, ))
-            new_thread.start()
-
-            return 'The file ' + file_name + ' has been uploaded to the bucket: ' + upload_to + '\n' 
-        except:
-            return 'Syntax Error, unexpected ' + command + ', expecting UPLOAD_FL <bucket_name>  <file_path>\n'
-    elif 'DOWNLOAD_FL' in command:
-        try:
-            arguments = command.split(' ')
-            bucket_name = arguments[1]
-            file_name = arguments[2]
-            new_thread = Thread(target=s.handle_upload_to_client, args=(client, bucket_name, file_name, ))
-            new_thread.start()
-            
-            return 'The file ' + file_name + ' is being downloaded from the bucket: ' + bucket_name + '\n'
-        except:
-            return 'Syntax Error, unexpected ' + command + ', expecting DOWNLOAD_FL <bucket_name> <file_name>\n'
+    elif 'upload' in command:
+        return 'File is being Uploaded \n'
+    elif 'download' in command:
+        return 'File is being Downloaded \n'
     else:
         return 'Bad Command!\n'

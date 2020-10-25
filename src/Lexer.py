@@ -4,13 +4,13 @@ status = {
 }
 
 command_argument_syntaxis = {
-    'QUIT': 1,
-    'LIST_BKT': 1,
-    'CREATE_BKT': 1,
-    'OPEN_BKT': 2,
-    'DELETE_BKT': 2,
-    'UPLOAD_FL': 3,
-    'DOWNLOAD_FL': 3,
+    'quit': 1,
+    'ls_bkt': 1,
+    'create_bkt': 1,
+    'open_bkt': 2,
+    'rm_bkt': 2,
+    'upload': 3,
+    'download': 3,
 }
 
 def check_sintaxis(command):

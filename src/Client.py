@@ -1,94 +1,80 @@
 import socket
 from threading import Thread
-import os
-import time
 
+class Client:
 
-def handle_upload(file_path):
-    reader = open(file_path, 'rb')
-    size = os.path.getsize(file_path)
+    def __init__(self):
+        self.host = socket.gethostname()
 
-    loop = str(int(size/1024)+1)
+        #server Socket
+        self.port = 12345
+        self.server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+        
+        #Data Socket
+        self.data_port = 12346
+        self.data_socket = None
 
-    loop = loop.encode()
+    def connect_to_server(self):
+        try:
+            self.server_socket.connect((self.host, self.port))
+            addr = self.server_socket.getsockname()
+            print('---------------------------------')
+            print('Client is running!')
+            print('Connected to the server from: ' + '(' + addr[0] + ':' + str(addr[1]) + ')')
+            print('---------------------------------')
+            self.handle_connection_server()
+        except socket.error as e:
+            print(str(e))
 
-    loop += b' ' * (64 - len(loop))
-    s.send(loop)
+    def handle_connection_server(self):
 
-    for i in range(int(loop)):
+        connected = True
 
-        data = reader.read(1024)
-        s.send(data)
+        print('----------------------')
+        print('Input rules below!!')
 
-def handle_download(file_name):
-    root_directory = "files"
-    parent_dir = os.getcwd()
-    file_path = os.path.join(parent_dir, root_directory)
-    
-    if not os.path.exists(file_path):
-        os.mkdir(file_path)
+        while connected:
 
-    writer = open(file_path+'/'+file_name, 'wb')
-    
-    limit = s.recv(64)
+            rule = input("> ").strip()
+            self.server_socket.send(rule.encode())
+            response = self.server_socket.recv(1024).decode('utf-8')
 
-    loop = int(limit.decode().strip())
-
-    for i in range(loop):
-        data = s.recv(1024)
-        writer.write(data)
-
-    writer.close()
-
-
-if __name__ == "__main__":
-
-    s = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-    server = socket.gethostname()
-    port = 12345
-
-    # connect to host
-    s.connect((server, port))
-
-    # recv message and decode here 1024 is buffer size.
-    print("Connected to: ", server, "!!!")
-
-    connected = True
-
-    print('----------------------')
-    print('Input commands below!!')
-
-    while connected:
-
-        rule = input("> ").strip()
-        s.send(rule.encode())
-        response = s.recv(1024).decode('utf-8')
-
-        print(response)
-        if rule == 'QUIT':
-            connected = False
-            s.close()
-        elif 'UPLOAD_FL' in rule and response == '200 OK':
-            file_path = rule.split(' ')[2]
-            print(file_path)
-            new_thread = Thread(target=handle_upload, args=(file_path,))
-            new_thread.start()
-            
-            print(s.recv(1024).decode('utf-8'))
-        elif 'DOWNLOAD_FL' in rule and response == '200 OK':
-            file_path = rule.split(' ')[2]
-            print(file_path)
-            new_thread = Thread(target=handle_download, args=(file_path,))
-            new_thread.start()
-
-            message = s.recv(1024)
-            print(message.decode('utf-8'))
-            
-        else:
-            response = s.recv(1024).decode('utf-8')
             print(response)
+            if rule == 'quit':
+                connected = False
+                self.server_socket.close()
+            elif 'upload' in rule and response == '200 OK':
+                self.upload_to_server(rule, self.server_socket)
+            elif 'download' in rule and response == '200 OK':
+                pass      
+            else:
+                response = self.server_socket.recv(1024).decode('utf-8')
+                print(response)        
 
-        time.sleep(2)
 
+    def upload_to_server(self, rule, server_socket):
+        try:
+            arguments = rule.split(' ', 2)
+            file_path = arguments[2]
+            self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            self.data_socket.connect((self.host, self.data_port))
+            print('Connection stablished.')
+            new_thread = Thread(target=self.handle_upload, args=(file_path, server_socket, self.data_socket,))
+            new_thread.start()
+        except:
+            print('Error.\n')
 
-    print("Exiting Connection to server: ", server)
+    def handle_upload(self, file_path, server_socket, data_socket):
+        try:
+            with open(file_path, 'rb') as reader:
+                while True:
+                    send_bytes = reader.read(1024)
+                    if not send_bytes: break
+                    data_socket.send(send_bytes)
+            server_socket.recv(1024).decode()
+        except:
+            server_socket.recv(1024).decode()
+        data_socket.close()
+
+if __name__ == '__main__':
+    Client().connect_to_server()
