@@ -23,8 +23,8 @@ class Server:
         #Data Socket
         self.data_port = 12346
         self.data_socket = None
-        self.conn = None
-        self.addr = None
+        self.data_client = None
+        self.data_addr = None
 
         #bucket directory
         self.directory_path = directory
@@ -77,19 +77,18 @@ class Server:
                 elif 'upload' in rule:
                     self.upload_from_client(rule, client)
                 elif 'download' in rule:
-                    pass
+                    self.download_to_client(rule, client)
                 else:
                     new_response = Crud.do_operation(client, rule)
-                    client.send(new_response.encode())
-            
+                    if new_response != 0: client.send(new_response.encode())
             else:
                 client.send('Bad rule: Please Check the available instructions \n'.encode())
 
     def upload_from_client(self, rule, client):
         try:
-            arguments = rule.split(' ', 2)
-            bucket = arguments[1]
-            file_name = arguments[2].split('/')[-1]
+            parameters = rule.split(' ', 2)
+            bucket = parameters[1]
+            file_name = parameters[2].split('/')[-1]
             self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
             self.data_socket.bind((self.host, self.data_port))
             self.data_socket.listen(5)
@@ -109,22 +108,40 @@ class Server:
                     bytes_file = conn.recv(1024)
                     if not bytes_file: break
                     writer.write(bytes_file)
+            writer.close()
             client.send('Upload complete.\n'.encode())
         except:
             client.send('Cant access file.\n'.encode())
         self.data_socket.close()
 
 
-    def handle_upload_to_client(self, client, conn, bucket, file_name):
-
-        path = os.path.join(self.full_path, bucket, file_name)
-        with open(path, 'wb') as writer:
+    def download_to_client(self, rule, client):
+        try:
+            parameters = rule.split(' ', 2)
+            download_from = parameters[1]
+            file_name = parameters[2]
+            path = os.path.join(self.full_path, download_from, file_name)
+            open(path, 'r')
+            self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            self.data_socket.bind((self.host, self.data_port))
+            self.data_socket.listen(5)
+            self.data_socket.settimeout(2)
+            self.data_client, self.data_addr = self.data_socket.accept()
+            new_thread = Thread(target=self.handle_download_to_client, args=(file_name, download_from, self.data_client,))
+            new_thread.start()
+        except:
+            client.send('Error, file not found or bucket doesn\'t exists.\n'.encode())
+            self.data_socket = None
+    
+    def handle_download_to_client(self, file_name, download_from, data_client):
+        path = os.path.join(self.full_path, download_from, file_name)
+        with open(path, 'rb') as reader:
             while True:
-                bytes_file = conn.recv(1024)
-                if not bytes_file: break
-                writer.write(bytes_file)
-        
-        client.send('Upload complete.\n'.encode())
+                send_bytes = reader.read(1024)
+                if not send_bytes: break
+                data_client.send(send_bytes)
+            reader.close()
+        self.data_socket.close()
 
 if __name__ == '__main__':
     try:

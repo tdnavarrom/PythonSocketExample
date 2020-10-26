@@ -7,6 +7,7 @@ import Lexer as lx
 
 root_directory = "buckets"
 parent_dir = os.getcwd()
+full_path = os.path.join(parent_dir, root_directory)
 
 def list_buckets():
     path = os.path.join(parent_dir, root_directory)
@@ -41,35 +42,47 @@ def create_bucket():
     path = os.path.join(parent_dir, root_directory, current_id)
     os.mkdir(path)
 
+def delete_file(rule, client_socket):
+    try:
+        parameters = rule.split(' ')
+        file_path = os.path.join(full_path,parameters[1],parameters[2])
+        os.remove(file_path)
+        client_socket.send('File deleted Succesfully.\n'.encode())
+    except:
+        client_socket.send("File doesn\'t exists.")
+
 def delete_bucket(bucket):
     try:
         path = os.path.join(parent_dir, root_directory, bucket)
         os.rmdir(path)
     except:
         return 'Error, the folder doesn`t exists or may contains files.\n'
-    return 'Bucket Removed Successfully!\n'
 
-def do_operation(client, command):
-    if command == 'ls_bkt':
+def do_operation(client, rule):
+    if rule == 'ls_bkt':
         return list_buckets()
-    elif command == 'create_bkt':
+    elif rule == 'create_bkt':
         create_bucket()
         return 'Bucket Created Successfully!\n'
-    elif 'rm_bkt' in command:
+    elif 'rm_bkt' in rule:
         try:
-            bucket_to_delete = command.split(' ')[1]
-            return delete_bucket(bucket_to_delete)
+            bucket_to_delete = rule.split(' ')[1]
+            delete_bucket(bucket_to_delete)
+            return 0
         except:
-            return 'Syntax Error, unexpected ' + command + ', expecting DELETE_BKT <bucket_name>\n'
-    elif 'open_bkt' in command:
+            return 'Syntax Error, unexpected ' + rule + ', expecting DELETE_BKT <bucket_name>\n'
+    elif 'rm_file' in rule:
+        delete_file(rule, client)
+        return 0
+    elif 'open_bkt' in rule:
         try:
-            bucket_to_open = command.split(' ')[1]
+            bucket_to_open = rule.split(' ')[1]
             return open_bucket(bucket_to_open)
         except:
-            return 'Syntax Error, unexpected ' + command + ', expecting OPEN_BKT <bucket_name>\n'
-    elif 'upload' in command:
-        return 'File is being Uploaded \n'
-    elif 'download' in command:
-        return 'File is being Downloaded \n'
+            return 'Syntax Error, unexpected ' + rule + ', expecting OPEN_BKT <bucket_name>\n'
+    elif 'upload' in rule:
+        return 0
+    elif 'download' in rule:
+        return 0
     else:
-        return 'Bad Command!\n'
+        return 'Bad rule!\n'
