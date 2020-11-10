@@ -4,14 +4,15 @@ import Lexer as lx
 import os
 import socket
 import sys
+import time
 
 # import thread module
-from threading import Thread
+from _thread import start_new_thread
 
 class Server:
 
     def __init__(self, directory):
-        self.host = socket.gethostname()
+        self.host = '127.0.0.1'
 
         #Control Socket
         self.control_port = 12345
@@ -21,10 +22,11 @@ class Server:
         self.address = None
 
         #Data Socket
-        self.data_port = 12346
-        self.data_socket = None
-        self.data_client = None
+        self.data_port = 55555
+        self.data_port2 = 55556
+
         self.data_addr = None
+        self.data_addr2 = None
 
         #bucket directory
         self.directory_path = directory
@@ -40,12 +42,11 @@ class Server:
         print('Port: ' + str(self.control_port))
         print('Socket is listening... ' + '(' + self.host + ',' + str(self.control_port) + ')')
         print('-----------------------------')
-        self.control_socket.listen(5)
+        self.control_socket.listen(10)
         while True:
             self.client, self.address = self.control_socket.accept()
             print('New Connection accepted. Remote IP addr: ' + self.address[0] + ' Port: ' + str(self.address[1]))
-            new_thread = Thread(target=self.connection, args=(self.client, self.address[0], ))
-            new_thread.start()
+            start_new_thread(self.connection,(self.client, self.address[0]))
         self.control_socket.close()
 
 
@@ -61,7 +62,7 @@ class Server:
         while connected:
 
             rule = client.recv(1024).decode()
-            print('Addr: ', addr, ' RULE: ', rule)
+            print('Addr: ',  addr, ' RULE: ', rule)
 
             status = lx.check_sintaxis(rule)
 
@@ -73,7 +74,6 @@ class Server:
                     print("connection closed from addr: ", addr)
                     client.send(rule.encode())
                     connected = False
-                    client.close()
                 elif 'upload' in rule:
                     self.upload_from_client(rule, client)
                 elif 'download' in rule:
@@ -83,55 +83,71 @@ class Server:
                     if new_response != 0: client.send(new_response.encode())
             else:
                 client.send('Bad rule: Please Check the available instructions \n'.encode())
+        
+        client.close()
 
     def upload_from_client(self, rule, client):
+        self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
         try:
             parameters = rule.split(' ', 2)
             bucket = parameters[1]
             file_name = parameters[2].split('/')[-1]
-            self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            
             self.data_socket.bind((self.host, self.data_port))
             self.data_socket.listen(5)
-            self.conn, self.addr = self.data_socket.accept()
-            new_thread = Thread(target=self.handle_upload_from_client, args=(client, self.conn, bucket, file_name))
-            new_thread.start()
+            self.data_socket.settimeout(2)
+            data_client, self.data_addr = self.data_socket.accept()
+            start_new_thread(self.handle_upload_from_client, (data_client, bucket, file_name,))
         except:
             client.send('Error uploading file.\n'.encode())
+            self.data_socket.close()
 
             
 
-    def handle_upload_from_client(self, client, conn, bucket, file_name):
-        try:
-            path = os.path.join(self.full_path, bucket, file_name)
-            with open(path, 'wb') as writer:
-                while True:
-                    bytes_file = conn.recv(1024)
-                    if not bytes_file: break
-                    writer.write(bytes_file)
+    def handle_upload_from_client(self, data_client, bucket, file_name):
+
+        path = os.path.join(self.full_path, bucket, file_name)
+        with open(path, 'wb') as writer:
+            while True:
+                print('hola')
+                bytes_file = data_client.recv(1024)
+                if not bytes_file: 
+                    print('aca')
+                    break
+                writer.write(bytes_file)
+                
+
             writer.close()
-            client.send('Upload complete.\n'.encode())
-        except:
-            client.send('Cant access file.\n'.encode())
+        data_client.close()
         self.data_socket.close()
 
 
     def download_to_client(self, rule, client):
+
+        self.data_socket2 = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+
         try:
             parameters = rule.split(' ', 2)
             download_from = parameters[1]
             file_name = parameters[2]
+            print('aca')
             path = os.path.join(self.full_path, download_from, file_name)
-            open(path, 'r')
-            self.data_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
-            self.data_socket.bind((self.host, self.data_port))
-            self.data_socket.listen(5)
-            self.data_socket.settimeout(2)
-            self.data_client, self.data_addr = self.data_socket.accept()
-            new_thread = Thread(target=self.handle_download_to_client, args=(file_name, download_from, self.data_client,))
-            new_thread.start()
+            open(path, 'rb')
+            print('aca2')
+            
+            print('aca3')
+            self.data_socket2.bind((self.host, self.data_port2))
+            print('aca4')
+            self.data_socket2.listen(5)
+            self.data_socket2.settimeout(2)
+            print('aca5')
+            data_client, self.data_addr2 = self.data_socket2.accept()
+            print('aca6')
+            start_new_thread(self.handle_download_to_client,(file_name, download_from, data_client,))
         except:
             client.send('Error, file not found or bucket doesn\'t exists.\n'.encode())
-            self.data_socket = None
+            self.data_socket2.close()
     
     def handle_download_to_client(self, file_name, download_from, data_client):
         path = os.path.join(self.full_path, download_from, file_name)
@@ -141,7 +157,8 @@ class Server:
                 if not send_bytes: break
                 data_client.send(send_bytes)
             reader.close()
-        self.data_socket.close()
+        data_client.close()
+        self.data_socket2.close()
 
 if __name__ == '__main__':
     try:
