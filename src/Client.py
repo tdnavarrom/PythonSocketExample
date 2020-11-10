@@ -71,20 +71,17 @@ class Client:
             print(server_socket.recv(1024).decode('utf-8'))
             self.data_socket.close()
 
+
     def handle_upload(self, file_path):
-        print('buenas')
-    
         with open(file_path, 'rb') as reader:
-            print('buenas2')
             while True:
                 send_bytes = reader.read(1024)
                 if not send_bytes: 
-                    print('hola_buenas')
                     break
                 self.data_socket.send(send_bytes)
             reader.close()
         self.data_socket.close()
-        print('chao')
+
 
     def download_from_server(self, rule, server_socket):
         self.data_socket2 = socket.socket(socket.AF_INET,socket.SOCK_STREAM)

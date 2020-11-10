@@ -110,10 +110,8 @@ class Server:
         path = os.path.join(self.full_path, bucket, file_name)
         with open(path, 'wb') as writer:
             while True:
-                print('hola')
                 bytes_file = data_client.recv(1024)
                 if not bytes_file: 
-                    print('aca')
                     break
                 writer.write(bytes_file)
                 
