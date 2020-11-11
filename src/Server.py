@@ -129,33 +129,23 @@ class Server:
             parameters = rule.split(' ', 2)
             download_from = parameters[1]
             file_name = parameters[2]
-            print('aca')
             path = os.path.join(self.full_path, download_from, file_name)
-            open(path, 'rb')
-            print('aca2')
+            self.data_socket2.connect((self.host, self.data_port2))
+            print('Connection stablished.')
             
-            print('aca3')
-            self.data_socket2.bind((self.host, self.data_port2))
-            print('aca4')
-            self.data_socket2.listen(5)
-            self.data_socket2.settimeout(2)
-            print('aca5')
-            data_client, self.data_addr2 = self.data_socket2.accept()
-            print('aca6')
-            start_new_thread(self.handle_download_to_client,(file_name, download_from, data_client,))
+            start_new_thread(self.handle_download_to_client,(file_name, download_from,))
         except:
             client.send('Error, file not found or bucket doesn\'t exists.\n'.encode())
             self.data_socket2.close()
     
-    def handle_download_to_client(self, file_name, download_from, data_client):
+    def handle_download_to_client(self, file_name, download_from):
         path = os.path.join(self.full_path, download_from, file_name)
         with open(path, 'rb') as reader:
             while True:
                 send_bytes = reader.read(1024)
                 if not send_bytes: break
-                data_client.send(send_bytes)
+                self.data_socket2.send(send_bytes)
             reader.close()
-        data_client.close()
         self.data_socket2.close()
 
 if __name__ == '__main__':
